@@ -205,6 +205,10 @@ pre {
   flex: 1;
 }
 
+.snapshot-error {
+  margin-top: 10px;
+}
+
 /* ---------- 合并阶段 ---------- */
 .merge-layout {
   display: grid;
@@ -413,6 +417,57 @@ pre {
   font-size: 14px;
   margin-bottom: 12px;
   flex-shrink: 0;
+}
+
+/* 快照导入恢复汇总 */
+.restore-banner {
+  background: rgba(79, 140, 255, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.restore-banner .restore-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.restore-banner .restore-head strong {
+  color: #fff;
+}
+
+.restore-banner .dismiss {
+  margin-left: auto;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.restore-banner .dismiss:hover {
+  color: var(--text);
+}
+
+.restore-banner ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  line-height: 1.7;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.restore-banner ul code {
+  color: var(--yellow);
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px;
 }
 
 .merge-footer {

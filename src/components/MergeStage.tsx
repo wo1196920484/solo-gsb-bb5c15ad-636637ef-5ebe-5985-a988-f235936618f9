@@ -7,6 +7,8 @@ import {
   type Resolution,
   type Resolutions,
 } from '../merge/threeWayMerge';
+import { createSnapshot, type RestoreSummary } from '../merge/snapshot';
+import { downloadText } from '../download';
 
 interface Props {
   mergeResult: MergeResult;
@@ -14,6 +16,8 @@ interface Props {
   onResolutionsChange: (r: Resolutions) => void;
   onFinish: () => void;
   onBack: () => void;
+  /** 从快照导入时的恢复汇总（非快照导入时为 null） */
+  restoreInfo: RestoreSummary | null;
 }
 
 export default function MergeStage({
@@ -22,9 +26,17 @@ export default function MergeStage({
   onResolutionsChange,
   onFinish,
   onBack,
+  restoreInfo,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(mergeResult.conflicts[0]?.id ?? null);
+  // 初始定位到首个未解决的冲突（快照导入时跳过已恢复的项）
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () =>
+      mergeResult.conflicts.find((c) => !resolutions[c.id])?.id ??
+      mergeResult.conflicts[0]?.id ??
+      null,
+  );
   const [showUnchanged, setShowUnchanged] = useState(true);
+  const [showRestoreInfo, setShowRestoreInfo] = useState(true);
 
   const { total, resolved } = countConflicts(mergeResult.root, resolutions);
   const allResolved = total === resolved;
@@ -35,6 +47,11 @@ export default function MergeStage({
     // 自动跳到下一个未解决的冲突
     const nextUnresolved = mergeResult.conflicts.find((c) => c.id !== id && !next[c.id]);
     if (nextUnresolved) setSelectedId(nextUnresolved.id);
+  };
+
+  const handleDownloadSnapshot = () => {
+    const snapshot = createSnapshot(mergeResult, resolutions);
+    downloadText('merge-session-snapshot.json', JSON.stringify(snapshot, null, 2));
   };
 
   return (
@@ -63,6 +80,32 @@ export default function MergeStage({
         </div>
         <div className="conflict-panel">
           <h3>冲突解决</h3>
+          {restoreInfo && showRestoreInfo && (
+            <div className="restore-banner">
+              <div className="restore-head">
+                <span>
+                  📥 快照已导入：恢复 <strong>{restoreInfo.restored}</strong> 项选择，跳过{' '}
+                  <strong>{restoreInfo.skipped.length}</strong> 项
+                </span>
+                <button
+                  className="dismiss"
+                  onClick={() => setShowRestoreInfo(false)}
+                  title="关闭提示"
+                >
+                  ×
+                </button>
+              </div>
+              {restoreInfo.skipped.length > 0 && (
+                <ul>
+                  {restoreInfo.skipped.map((s, i) => (
+                    <li key={i}>
+                      <code>{s.pointer || '（根节点）'}</code>：{s.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <div className="progress-line">
             已解决 <strong>{resolved}</strong> / {total} 个冲突
           </div>
@@ -83,6 +126,7 @@ export default function MergeStage({
       </div>
       <div className="merge-footer">
         <button onClick={onBack}>← 返回重新输入</button>
+        <button onClick={handleDownloadSnapshot}>下载会话快照</button>
         <div className="spacer" style={{ flex: 1 }} />
         <button className="primary" onClick={onFinish} disabled={!allResolved}>
           生成合并结果 →

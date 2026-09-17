@@ -24,11 +24,12 @@ npm test           # 运行合并逻辑单元测试（vitest）
 
 ## 操作方法
 
-1. **输入三份 JSON**：在三个面板中分别粘贴或点击「导入文件」选择 `.json` 文件；可点击「加载示例数据」快速体验。点击「开始合并」。
+1. **输入三份 JSON**：在三个面板中分别粘贴或点击「导入文件」选择 `.json` 文件；可点击「加载示例数据」快速体验。点击「开始合并」。此前保存的**会话快照**也可在此页通过「导入会话快照」恢复（见下文）。
 2. **解决冲突**：
    - 左侧合并树按 JSON Pointer 层级展示合并结果，冲突节点以红色标出，点击即可定位；
    - 右侧面板显示冲突的三方值（基线 / 当前 / 目标）与冲突原因，可选择「采用当前分支」「采用目标分支」，或填写自定义 JSON 值；
-   - 顶部进度条显示已解决数量，全部解决后「生成合并结果」按钮可用。
+   - 顶部进度条显示已解决数量，全部解决后「生成合并结果」按钮可用；
+   - 底部「下载会话快照」可随时保存当前进度（三份源 JSON + 已选解决方案）。
 3. **导出结果**：查看合并后的 JSON 与相对基线的 RFC 6902 JSON Patch，支持一键复制或下载为 `merged.json` / `patch.json`。
 4. **（可选）Schema 约束校验**：在输出页顶部勾选「JSON Schema 约束校验」：
    - 粘贴或「导入文件」载入一份 **Draft 2020-12** Schema，点击「应用 Schema」即对合并结果执行校验（支持文档内 `$ref` 与 `format` 等标准关键字）；
@@ -36,6 +37,42 @@ npm test           # 运行合并逻辑单元测试（vitest）
    - 点击错误前的 **JSON Pointer 路径**，可直接在左侧合并结果视图中滚动并高亮对应值；
    - Schema JSON 解析失败、或包含**无法解析的本地 `$ref`** 时会给出明确错误提示，且**不会覆盖上一次有效的 Schema**（仍按旧 Schema 校验）；
    - 可随时取消勾选关闭校验；**开启校验且存在错误时仍允许下载**，下载按钮旁会显示「⚠ N 个校验错误」警示。
+
+## 会话快照（中断后继续）
+
+- **下载快照**：在冲突处理页底部点击「下载会话快照」，得到 `merge-session-snapshot.json`，内容包含格式版本、三份源 JSON（base / ours / theirs）与当前已选择的解决方案。
+- **导入快照**：在输入页点击「导入会话快照」选择之前下载的快照文件：
+  - 导入时用快照中的三份源 JSON **重新执行三方合并**，再恢复选择；
+  - 仅当某个冲突的 **JSON Pointer 及 base / ours / theirs 三方值**与快照记录完全一致时才恢复该项选择（**绝不按旧冲突序号套用**）；
+  - 不满足条件的条目会被跳过，并在合并页顶部汇总显示每项的跳过原因；
+  - 快照结构或字段非法时给出明确错误提示，且**不影响当前会话**（输入内容保持不变）；
+  - 导入成功后显示恢复 / 跳过数量，并自动定位到首个未解决冲突。
+
+### 快照格式
+
+```json
+{
+  "format": "json-three-way-merge/session",
+  "version": 1,
+  "base": { "..." : "基线文档" },
+  "ours": { "..." : "当前分支文档" },
+  "theirs": { "..." : "目标分支文档" },
+  "resolutions": [
+    {
+      "pointer": "/features/logging",
+      "base": { "present": true, "value": "info" },
+      "ours": { "present": false },
+      "theirs": { "present": true, "value": "warn" },
+      "resolution": { "kind": "theirs" }
+    }
+  ]
+}
+```
+
+- `format` / `version`：格式标识与版本（当前为 `1`），不匹配时拒绝导入。
+- `base` / `ours` / `theirs`：三份源 JSON 文档（完整内容）。
+- `resolutions[]`：已选择的解决方案。每项以 `pointer`（RFC 6901 JSON Pointer，根为 `""`）定位冲突，并记录冲突的 base / ours / theirs 三方值用于导入时校验；某侧 `present` 为 `false` 表示该侧此节点不存在（已删除），为 `true` 时必须带 `value`。
+- `resolution.kind`：`ours`（采用当前分支）/ `theirs`（采用目标分支）/ `custom`（自定义值，需带 `value` 字段）。
 
 ## 合并规则
 
@@ -66,10 +103,12 @@ src/
 │   ├── threeWayMerge.ts    # 三方合并（生成合并树 + 冲突列表）
 │   ├── rfc6902.ts          # 基线 → 结果的 JSON Patch 生成
 │   ├── pointer.ts          # RFC 6901 JSON Pointer 工具
+│   ├── snapshot.ts         # 会话快照：生成 / 校验解析 / 按指针+三方值恢复选择
 │   ├── schema.ts           # Ajv Draft 2020-12 编译 / 校验 / 错误分组
 │   ├── jsonLineMap.ts      # JSON Pointer → 结果视图行号映射（点击定位）
 │   ├── deepEqual.ts        # 键序无关的深比较
 │   └── *.test.ts           # 单元测试（vitest）
 ├── components/             # 输入 / 合并树 / 冲突面板 / 输出 / Schema 面板等界面组件
+├── download.ts             # 浏览器文本下载工具
 └── App.tsx                 # 三阶段流程编排
 ```

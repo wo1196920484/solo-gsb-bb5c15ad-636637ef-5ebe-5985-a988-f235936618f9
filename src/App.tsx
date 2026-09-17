@@ -11,6 +11,11 @@ import {
 } from './merge/threeWayMerge';
 import { isAbsent, type JsonValue } from './merge/types';
 import type { CompiledSchema } from './merge/schema';
+import {
+  restoreResolutions,
+  type RestoreSummary,
+  type SessionSnapshot,
+} from './merge/snapshot';
 
 type Stage = 'input' | 'merge' | 'output';
 
@@ -21,6 +26,8 @@ export default function App() {
   const [resolutions, setResolutions] = useState<Resolutions>({});
   const [merged, setMerged] = useState<JsonValue | null>(null);
   const [patch, setPatch] = useState<PatchOp[]>([]);
+  // 快照导入的恢复汇总（进入合并页时展示一次）
+  const [restoreInfo, setRestoreInfo] = useState<RestoreSummary | null>(null);
   // Schema 校验状态在「返回调整 ↔ 输出」之间保留，重新开始时清空
   const [schemaEnabled, setSchemaEnabled] = useState(false);
   const [schema, setSchema] = useState<CompiledSchema | null>(null);
@@ -31,6 +38,20 @@ export default function App() {
     setResolutions({});
     setMerged(null);
     setPatch([]);
+    setRestoreInfo(null);
+    setStage('merge');
+  };
+
+  // 导入会话快照：用快照中的三份源 JSON 重新执行三方合并，再按指针 + 三方值恢复选择
+  const handleImportSnapshot = (snapshot: SessionSnapshot) => {
+    const result = threeWayMerge(snapshot.base, snapshot.ours, snapshot.theirs);
+    const { resolutions: restored, ...summary } = restoreResolutions(snapshot, result);
+    setBaseDoc(snapshot.base);
+    setMergeResult(result);
+    setResolutions(restored);
+    setMerged(null);
+    setPatch([]);
+    setRestoreInfo(summary);
     setStage('merge');
   };
 
@@ -50,6 +71,7 @@ export default function App() {
     setResolutions({});
     setMerged(null);
     setPatch([]);
+    setRestoreInfo(null);
     setSchema(null);
     setSchemaEnabled(false);
   };
@@ -67,7 +89,7 @@ export default function App() {
         </div>
       </header>
       <main>
-        {stage === 'input' && <InputStage onMerge={handleMerge} />}
+        {stage === 'input' && <InputStage onMerge={handleMerge} onImportSnapshot={handleImportSnapshot} />}
         {stage === 'merge' && mergeResult && (
           <MergeStage
             mergeResult={mergeResult}
@@ -75,6 +97,7 @@ export default function App() {
             onResolutionsChange={setResolutions}
             onFinish={handleFinish}
             onBack={handleRestart}
+            restoreInfo={restoreInfo}
           />
         )}
         {stage === 'output' && merged !== null && (

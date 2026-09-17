@@ -4,6 +4,7 @@ import type { JsonValue } from '../merge/types';
 import type { CompiledSchema } from '../merge/schema';
 import { validateMerged } from '../merge/schema';
 import { buildPointerLines, resolveLine } from '../merge/jsonLineMap';
+import { downloadText } from '../download';
 import SchemaPanel from './SchemaPanel';
 import ValidationIssues from './ValidationIssues';
 
@@ -16,16 +17,6 @@ interface Props {
   onSchemaChange: (s: CompiledSchema | null) => void;
   onBack: () => void;
   onRestart: () => void;
-}
-
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -132,7 +123,7 @@ export default function OutputStage({
             <button className="small" onClick={() => void handleCopy(mergedText, '合并结果 ')}>
               复制
             </button>
-            <button className="small" onClick={() => download('merged.json', mergedText)}>
+            <button className="small" onClick={() => downloadText('merged.json', mergedText)}>
               下载 merged.json
             </button>
             {showValidation && errorCount > 0 && (
@@ -152,7 +143,7 @@ export default function OutputStage({
             <button className="small" onClick={() => void handleCopy(patchText, '补丁 ')}>
               复制
             </button>
-            <button className="small" onClick={() => download('patch.json', patchText)}>
+            <button className="small" onClick={() => downloadText('patch.json', patchText)}>
               下载 patch.json
             </button>
           </div>
