@@ -415,6 +415,44 @@ pre {
   flex-shrink: 0;
 }
 
+/* 快照导入恢复汇总 */
+.restore-summary {
+  background: rgba(79, 140, 255, 0.1);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.restore-summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.restore-summary ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-dim);
+}
+
+.restore-summary li {
+  line-height: 1.7;
+}
+
+.restore-summary code {
+  color: var(--yellow);
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px;
+}
+
+.snapshot-error {
+  margin-top: 10px;
+}
+
 .merge-footer {
   display: flex;
   gap: 12px;

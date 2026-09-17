@@ -4,6 +4,7 @@ import type { JsonValue } from '../merge/types';
 import type { CompiledSchema } from '../merge/schema';
 import { validateMerged } from '../merge/schema';
 import { buildPointerLines, resolveLine } from '../merge/jsonLineMap';
+import { download } from '../download';
 import SchemaPanel from './SchemaPanel';
 import ValidationIssues from './ValidationIssues';
 
@@ -16,16 +17,6 @@ interface Props {
   onSchemaChange: (s: CompiledSchema | null) => void;
   onBack: () => void;
   onRestart: () => void;
-}
-
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 async function copyText(text: string): Promise<boolean> {

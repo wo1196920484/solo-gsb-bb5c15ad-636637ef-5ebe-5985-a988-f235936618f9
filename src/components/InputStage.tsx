@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import JsonInputPanel from './JsonInputPanel';
 import type { JsonValue } from '../merge/types';
+import { parseSnapshot, type ParsedSnapshot } from '../merge/snapshot';
 import { SAMPLE_BASE, SAMPLE_OURS, SAMPLE_THEIRS } from '../sampleData';
 
 interface Props {
   onMerge: (base: JsonValue, ours: JsonValue, theirs: JsonValue) => void;
+  onImportSnapshot: (snapshot: ParsedSnapshot) => void;
 }
 
 type Field = 'base' | 'ours' | 'theirs';
@@ -15,13 +17,15 @@ const PANELS: { field: Field; title: string; hint: string }[] = [
   { field: 'theirs', title: '目标分支 (Theirs)', hint: '需要合入的目标分支版本' },
 ];
 
-export default function InputStage({ onMerge }: Props) {
+export default function InputStage({ onMerge, onImportSnapshot }: Props) {
   const [texts, setTexts] = useState<Record<Field, string>>({ base: '', ours: '', theirs: '' });
   const [errors, setErrors] = useState<Record<Field, string | null>>({
     base: null,
     ours: null,
     theirs: null,
   });
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  const snapshotFileRef = useRef<HTMLInputElement>(null);
 
   const setText = (field: Field) => (v: string) => {
     setTexts((t) => ({ ...t, [field]: v }));
@@ -49,6 +53,18 @@ export default function InputStage({ onMerge }: Props) {
     setErrors({ base: null, ours: null, theirs: null });
   };
 
+  // 导入会话快照：校验失败仅提示错误，不影响当前输入内容
+  const handleSnapshotFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const snapshot = parseSnapshot(await file.text());
+      setSnapshotError(null);
+      onImportSnapshot(snapshot);
+    } catch (err) {
+      setSnapshotError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <>
       <div className="input-grid">
@@ -65,6 +81,18 @@ export default function InputStage({ onMerge }: Props) {
       </div>
       <div className="input-actions">
         <button onClick={loadSample}>加载示例数据</button>
+        <button onClick={() => snapshotFileRef.current?.click()}>导入会话快照</button>
+        <input
+          ref={snapshotFileRef}
+          className="snapshot-file-input"
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            void handleSnapshotFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
         <div className="spacer" />
         <button
           className="primary"
@@ -74,6 +102,7 @@ export default function InputStage({ onMerge }: Props) {
           开始合并 →
         </button>
       </div>
+      {snapshotError && <div className="error-text snapshot-error">快照导入失败：{snapshotError}</div>}
     </>
   );
 }
